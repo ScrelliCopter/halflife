@@ -523,7 +523,7 @@ void PM_UpdateStepSound( void )
 	fLadder = ( pmove->movetype == MOVETYPE_FLY );// IsOnLadder();
 
 	// UNDONE: need defined numbers for run, walk, crouch, crouch run velocities!!!!	
-	if ( ( pmove->flags & FL_DUCKING) || fLadder )
+	if ( ( pmove->flags & FL_DUCKING ) || fLadder )
 	{
 		velwalk = 60;		// These constants should be based on cl_movespeedkey * cl_forwardspeed somehow
 		velrun = 80;		// UNDONE: Move walking to server
@@ -539,7 +539,7 @@ void PM_UpdateStepSound( void )
 	// If we're on a ladder or on the ground, and we're moving fast enough,
 	//  play step sound.  Also, if pmove->flTimeStepSound is zero, get the new
 	//  sound right away - we just started moving in new level.
-	if ( (fLadder || ( pmove->onground != -1 ) ) &&
+	if ( ( fLadder || ( pmove->onground != -1 ) ) &&
 		( Length( pmove->velocity ) > 0.0 ) &&
 		( speed >= velwalk || !pmove->flTimeStepSound ) )
 	{
