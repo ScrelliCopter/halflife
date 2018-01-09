@@ -13,7 +13,7 @@ typedef unsigned char 		byte;
 class StudioModel
 {
 public:
-	void					Init( char *modelname );
+	int						Init( char *modelname );
 	void					DrawModel( void );
 	void					AdvanceFrame( float dt );
 

@@ -112,7 +112,7 @@ studiohdr_t *StudioModel::LoadModel( char *modelname )
 	if( (fp = fopen( modelname, "rb" )) == NULL)
 	{
 		printf("unable to open %s\n", modelname );
-		exit(1);
+		return NULL;
 	}
 
 	fseek( fp, 0, SEEK_END );
@@ -158,7 +158,7 @@ studioseqhdr_t *StudioModel::LoadDemandSequences( char *modelname )
 	if( (fp = fopen( modelname, "rb" )) == NULL)
 	{
 		printf("unable to open %s\n", modelname );
-		exit(1);
+		return NULL;
 	}
 
 	fseek( fp, 0, SEEK_END );
@@ -173,9 +173,13 @@ studioseqhdr_t *StudioModel::LoadDemandSequences( char *modelname )
 }
 
 
-void StudioModel::Init( char *modelname )
+int StudioModel::Init( char *modelname )
 { 
 	m_pstudiohdr = LoadModel( modelname );
+	if ( m_pstudiohdr == NULL )
+	{
+		return -1;
+	}
 
 	// preload textures
 	if (m_pstudiohdr->numtextures == 0)
@@ -205,6 +209,8 @@ void StudioModel::Init( char *modelname )
 			m_panimhdr[i] = LoadDemandSequences( seqgroupname );
 		}
 	}
+
+	return 0;
 }
 
 
