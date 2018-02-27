@@ -69,8 +69,8 @@
       <ModuleDefinitionFile>$(ProjectDir)..\..\dlls\hl.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>call ..\..\filecopy.bat $(TargetPath) ..\..\..\game\mod\dlls\$(TargetName).dll
-call ..\..\filecopy.bat $(TargetDir)\$(TargetName).pdb ..\..\..\game\mod\dlls\$(TargetName).pdb</Command>
+      <Command>copy /Y "$(TargetPath)" "%HL1_DIR%\mod\dlls\$(TargetName).dll"
+copy /Y "$(TargetDir)\$(TargetName).pdb" "%HL1_DIR%\mod\dlls\$(TargetName).pdb"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Performing Post-Build Event</Message>
@@ -98,8 +98,8 @@ call ..\..\filecopy.bat $(TargetDir)\$(TargetName).pdb ..\..\..\game\mod\dlls\$(
       <ModuleDefinitionFile>$(ProjectDir)..\..\dlls\hl.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
-      <Command>call ..\..\filecopy.bat $(TargetPath) ..\..\..\game\mod\dlls\$(TargetName).dll
-call ..\..\filecopy.bat $(TargetDir)\$(TargetName).pdb ..\..\..\game\mod\dlls\$(TargetName).pdb</Command>
+      <Command>copy /Y "$(TargetPath)" "%HL1_DIR%\mod\dlls\$(TargetName).dll"
+copy /Y "$(TargetDir)\$(TargetName).pdb" "%HL1_DIR%\mod\dlls\$(TargetName).pdb"</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Performing Post-Build Event</Message>
