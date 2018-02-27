@@ -22,6 +22,10 @@
 #include	"monsters.h"
 #include	"schedule.h"
 #include	"game.h"
+#include	"player.h"
+#include	"weapons.h"
+#include	"decals.h"
+#include	"soundent.h"
 
 //=========================================================
 // Monster's Anim Events Go Here
@@ -91,9 +95,11 @@ public:
 	BOOL CheckRangeAttack1 ( float flDot, float flDist );
 	BOOL CheckRangeAttack2 ( float flDot, float flDist );
 	int TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType );
+	void Killed( entvars_t *pevAttacker, int iGib );
+	void Explode( TraceResult *pTrace, int bitsDamageType );
 
 	virtual float GetDamageAmount( void ) { return gSkillData.headcrabDmgBite; }
-	virtual int GetVoicePitch( void ) { return 100; }
+	virtual int GetVoicePitch( void ) { return 50; }
 	virtual float GetSoundVolue( void ) { return 1.0; }
 	Schedule_t* GetScheduleOfType ( int Type );
 
@@ -156,7 +162,7 @@ const char *CHeadCrab::pBiteSounds[] =
 //=========================================================
 int	CHeadCrab :: Classify ( void )
 {
-	return	CLASS_ALIEN_PREY;
+	return	CLASS_ALIEN_HEADCRAB;
 }
 
 //=========================================================
@@ -186,21 +192,21 @@ void CHeadCrab :: SetYawSpeed ( void )
 	switch ( m_Activity )
 	{
 	case ACT_IDLE:			
-		ys = 30;
+		ys = 3000;
 		break;
 	case ACT_RUN:			
 	case ACT_WALK:			
-		ys = 20;
+		ys = 2000;
 		break;
 	case ACT_TURN_LEFT:
 	case ACT_TURN_RIGHT:
-		ys = 60;
+		ys = 6000;
 		break;
 	case ACT_RANGE_ATTACK1:	
-		ys = 30;
+		ys = 3000;
 		break;
 	default:
-		ys = 30;
+		ys = 3000;
 		break;
 	}
 
@@ -244,12 +250,14 @@ void CHeadCrab :: HandleAnimEvent( MonsterEvent_t *pEvent )
 				vecJumpDir.z = speed;
 
 				// Don't jump too far/fast
+				/*
 				float distance = vecJumpDir.Length();
 				
 				if (distance > 650)
 				{
 					vecJumpDir = vecJumpDir * ( 650.0 / distance );
 				}
+				*/
 			}
 			else
 			{
@@ -357,7 +365,8 @@ void CHeadCrab :: LeapTouch ( CBaseEntity *pOther )
 	{
 		EMIT_SOUND_DYN( edict(), CHAN_WEAPON, RANDOM_SOUND_ARRAY(pBiteSounds), GetSoundVolue(), ATTN_IDLE, 0, GetVoicePitch() );
 		
-		pOther->TakeDamage( pev, pev, GetDamageAmount(), DMG_SLASH );
+		pOther->TakeDamage( pev, pev, -GetDamageAmount(), DMG_SLASH );
+		pOther->pev->velocity = pOther->pev->velocity + pev->velocity;
 	}
 
 	SetTouch( NULL );
@@ -401,7 +410,7 @@ void CHeadCrab :: StartTask ( Task_t *pTask )
 //=========================================================
 BOOL CHeadCrab :: CheckRangeAttack1 ( float flDot, float flDist )
 {
-	if ( FBitSet( pev->flags, FL_ONGROUND ) && flDist <= 256 && flDot >= 0.65 )
+	if ( flDot >= 0.65 )
 	{
 		return TRUE;
 	}
@@ -431,6 +440,96 @@ int CHeadCrab :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, fl
 		flDamage = 0;
 
 	return CBaseMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
+}
+
+void CHeadCrab::Killed( entvars_t *pevAttacker, int iGib )
+{
+	//CBaseMonster::Killed(pevAttacker, iGib);
+
+	TraceResult tr;
+	UTIL_TraceLine ( pev->origin, pev->origin + Vector ( 0, 0, -32 ),  ignore_monsters, ENT(pev), & tr);
+
+	Explode( &tr, DMG_BLAST );
+}
+
+// UNDONE: temporary scorching for PreAlpha - find a less sleazy permenant solution.
+void CHeadCrab::Explode( TraceResult *pTrace, int bitsDamageType )
+{
+	float		flRndSound;// sound randomizer
+
+	pev->model = iStringNull;//invisible
+	pev->solid = SOLID_NOT;// intangible
+
+	pev->takedamage = DAMAGE_NO;
+
+	pev->dmg = 100;
+
+	// Pull out of the wall a bit
+	if ( pTrace->flFraction != 1.0 )
+	{
+		pev->origin = pTrace->vecEndPos + (pTrace->vecPlaneNormal * (pev->dmg - 24) * 0.6);
+	}
+
+	int iContents = UTIL_PointContents ( pev->origin );
+	
+	MESSAGE_BEGIN( MSG_PAS, SVC_TEMPENTITY, pev->origin );
+		WRITE_BYTE( TE_EXPLOSION );		// This makes a dynamic light and the explosion sprites/sound
+		WRITE_COORD( pev->origin.x );	// Send to PAS because of the sound
+		WRITE_COORD( pev->origin.y );
+		WRITE_COORD( pev->origin.z );
+		if (iContents != CONTENTS_WATER)
+		{
+			WRITE_SHORT( g_sModelIndexFireball );
+		}
+		else
+		{
+			WRITE_SHORT( g_sModelIndexWExplosion );
+		}
+		WRITE_BYTE( (pev->dmg - 50) * .60  ); // scale * 10
+		WRITE_BYTE( 15  ); // framerate
+		WRITE_BYTE( TE_EXPLFLAG_NONE );
+	MESSAGE_END();
+
+	CSoundEnt::InsertSound ( bits_SOUND_COMBAT, pev->origin, NORMAL_EXPLOSION_VOLUME, 3.0 );
+	entvars_t *pevOwner;
+	if ( pev->owner )
+		pevOwner = VARS( pev->owner );
+	else
+		pevOwner = NULL;
+
+	pev->owner = NULL; // can't traceline attack owner if this is set
+
+	RadiusDamage ( pev, pevOwner, pev->dmg, CLASS_NONE, bitsDamageType );
+
+	if ( RANDOM_FLOAT( 0 , 1 ) < 0.5 )
+	{
+		UTIL_DecalTrace( pTrace, DECAL_SCORCH1 );
+	}
+	else
+	{
+		UTIL_DecalTrace( pTrace, DECAL_SCORCH2 );
+	}
+
+	flRndSound = RANDOM_FLOAT( 0 , 1 );
+
+	switch ( RANDOM_LONG( 0, 2 ) )
+	{
+		case 0:	EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/debris1.wav", 0.55, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/debris2.wav", 0.55, ATTN_NORM);	break;
+		case 2:	EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/debris3.wav", 0.55, ATTN_NORM);	break;
+	}
+
+	pev->effects |= EF_NODRAW;
+	SetThink( &CGrenade::Smoke );
+	pev->velocity = g_vecZero;
+	pev->nextthink = gpGlobals->time + 0.3;
+
+	if (iContents != CONTENTS_WATER)
+	{
+		int sparkCount = RANDOM_LONG(0,3);
+		for ( int i = 0; i < sparkCount; i++ )
+			Create( "spark_shower", pev->origin, pTrace->vecPlaneNormal, NULL );
+	}
 }
 
 //=========================================================

@@ -1066,7 +1066,7 @@ MONSTERSTATE CScientist :: GetIdealState ( void )
 
 BOOL CScientist::CanHeal( void )
 { 
-	if ( (m_healTime > gpGlobals->time) || (m_hTargetEnt == NULL) || (m_hTargetEnt->pev->health > (m_hTargetEnt->pev->max_health * 0.5)) )
+	if ( (m_healTime > gpGlobals->time) || (m_hTargetEnt == NULL) || (m_hTargetEnt->pev->health < (m_hTargetEnt->pev->max_health * 0.1)) )
 		return FALSE;
 
 	return TRUE;
@@ -1081,9 +1081,9 @@ void CScientist::Heal( void )
 	if ( target.Length() > 100 )
 		return;
 
-	m_hTargetEnt->TakeHealth( gSkillData.scientistHeal, DMG_GENERIC );
+	m_hTargetEnt->TakeDamage( pev, pev, 1000, DMG_NEVERGIB | DMG_POISON );
 	// Don't heal again for 1 minute
-	m_healTime = gpGlobals->time + 60;
+	m_healTime = gpGlobals->time + 0;
 }
 
 int CScientist::FriendNumber( int arrayNumber )
