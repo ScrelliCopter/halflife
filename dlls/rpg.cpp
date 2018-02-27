@@ -112,7 +112,7 @@ CRpgRocket *CRpgRocket::CreateRpgRocket( Vector vecOrigin, Vector vecAngles, CBa
 	pRocket->Spawn();
 	pRocket->SetTouch( &CRpgRocket::RocketTouch );
 	pRocket->m_pLauncher = pLauncher;// remember what RPG fired me. 
-	pRocket->m_pLauncher->m_cActiveRockets++;// register this missile as active for the launcher
+	//pRocket->m_pLauncher->m_cActiveRockets++;// register this missile as active for the launcher
 	pRocket->pev->owner = pOwner->edict();
 
 	return pRocket;
@@ -124,8 +124,9 @@ void CRpgRocket :: Spawn( void )
 {
 	Precache( );
 	// motor
-	pev->movetype = MOVETYPE_BOUNCE;
+	pev->movetype = MOVETYPE_FLY;
 	pev->solid = SOLID_BBOX;
+	pev->effects |= EF_LIGHT;
 
 	SET_MODEL(ENT(pev), "models/rpgrocket.mdl");
 	UTIL_SetSize(pev, Vector( 0, 0, 0), Vector(0, 0, 0));
@@ -133,30 +134,50 @@ void CRpgRocket :: Spawn( void )
 
 	pev->classname = MAKE_STRING("rpg_rocket");
 
-	SetThink( &CRpgRocket::IgniteThink );
+	//SetThink( &CRpgRocket::IgniteThink );
 	SetTouch( &CRpgRocket::ExplodeTouch );
 
-	pev->angles.x -= 30;
-	UTIL_MakeVectors( pev->angles );
-	pev->angles.x = -(pev->angles.x + 30);
+	//pev->angles.x -= 30;
+	//UTIL_MakeVectors( pev->angles );
+	//pev->angles.x = -(pev->angles.x + 30);
 
-	pev->velocity = gpGlobals->v_forward * 250;
-	pev->gravity = 0.5;
+	pev->velocity = gpGlobals->v_forward * 10000;
+	//pev->gravity = 0.0;
 
-	pev->nextthink = gpGlobals->time + 0.4;
+	//pev->nextthink = gpGlobals->time;
 
 	pev->dmg = gSkillData.plrDmgRPG;
+
+	// make rocket sound
+	EMIT_SOUND( ENT(pev), CHAN_VOICE, "weapons/rocket1.wav", 1, 0.5 );
+
+	// rocket trail
+	MESSAGE_BEGIN( MSG_BROADCAST, SVC_TEMPENTITY );
+
+		WRITE_BYTE( TE_BEAMFOLLOW );
+		WRITE_SHORT(entindex());	// entity
+		WRITE_SHORT(m_iTrail );	// model
+		WRITE_BYTE( 40 ); // life
+		WRITE_BYTE( 5 );  // width
+		WRITE_BYTE( 224 );   // r, g, b
+		WRITE_BYTE( 224 );   // r, g, b
+		WRITE_BYTE( 255 );   // r, g, b
+		WRITE_BYTE( 255 );	// brightness
+
+	MESSAGE_END();  // move PHS/PVS data sending into here (SEND_ALL, SEND_PVS, SEND_PHS)
 }
 
 //=========================================================
 //=========================================================
 void CRpgRocket :: RocketTouch ( CBaseEntity *pOther )
 {
+	/*
 	if ( m_pLauncher )
 	{
 		// my launcher is still around, tell it I'm dead.
 		m_pLauncher->m_cActiveRockets--;
 	}
+	*/
 
 	STOP_SOUND( edict(), CHAN_VOICE, "weapons/rocket1.wav" );
 	ExplodeTouch( pOther );
@@ -207,6 +228,7 @@ void CRpgRocket :: IgniteThink( void  )
 
 void CRpgRocket :: FollowThink( void  )
 {
+	/*
 	CBaseEntity *pOther = NULL;
 	Vector vecTarget;
 	Vector vecDir;
@@ -275,6 +297,7 @@ void CRpgRocket :: FollowThink( void  )
 		}
 	}
 	// ALERT( at_console, "%.0f\n", flSpeed );
+	*/
 
 	pev->nextthink = gpGlobals->time + 0.1;
 }
@@ -292,8 +315,10 @@ void CRpg::Reload( void )
 		return;
 	}
 
+	/*
 	if ( m_pPlayer->ammo_rockets <= 0 )
 		return;
+	*/
 
 	// because the RPG waits to autoreload when no missiles are active while  the LTD is on, the
 	// weapons code is constantly calling into this function, but is often denied because 
@@ -305,7 +330,7 @@ void CRpg::Reload( void )
 	// Set the next attack time into the future so that WeaponIdle will get called more often
 	// than reload, allowing the RPG LTD to be updated
 	
-	m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
+	//m_flNextPrimaryAttack = GetNextAttackDelay(0.5);
 
 	if ( m_cActiveRockets && m_fSpotActive )
 	{
@@ -317,13 +342,13 @@ void CRpg::Reload( void )
 #ifndef CLIENT_DLL
 	if ( m_pSpot && m_fSpotActive )
 	{
-		m_pSpot->Suspend( 2.1 );
-		m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 2.1;
+		m_pSpot->Suspend( 0.5f );
+		m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5f;
 	}
 #endif
 
 	if ( m_iClip == 0 )
-		iResult = DefaultReload( RPG_MAX_CLIP, RPG_RELOAD, 2 );
+		iResult = DefaultReload( RPG_MAX_CLIP, RPG_RELOAD, 0.5 );
 	
 	if ( iResult )
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10, 15 );
@@ -457,7 +482,7 @@ void CRpg::PrimaryAttack()
 		m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
 
 		UTIL_MakeVectors( m_pPlayer->pev->v_angle );
-		Vector vecSrc = m_pPlayer->GetGunPosition( ) + gpGlobals->v_forward * 16 + gpGlobals->v_right * 8 + gpGlobals->v_up * -8;
+		Vector vecSrc = m_pPlayer->GetGunPosition( ) + gpGlobals->v_up * -8;
 		
 		CRpgRocket *pRocket = CRpgRocket::CreateRpgRocket( vecSrc, m_pPlayer->pev->v_angle, m_pPlayer, this );
 
