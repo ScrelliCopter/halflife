@@ -45,16 +45,7 @@ LINK_ENTITY_TO_CLASS( weapon_gauss, CGauss );
 
 float CGauss::GetFullChargeTime( void )
 {
-#ifdef CLIENT_DLL
-	if ( bIsMultiplayer() )
-#else
-	if ( g_pGameRules->IsMultiplayer() )
-#endif
-	{
-		return 1.5;
-	}
-
-	return 4;
+	return 1.5;
 }
 
 #ifdef CLIENT_DLL
@@ -229,20 +220,8 @@ void CGauss::SecondaryAttack()
 		// during the charging process, eat one bit of ammo every once in a while
 		if ( UTIL_WeaponTimeBase() >= m_pPlayer->m_flNextAmmoBurn && m_pPlayer->m_flNextAmmoBurn != 1000 )
 		{
-#ifdef CLIENT_DLL
-	if ( bIsMultiplayer() )
-#else
-	if ( g_pGameRules->IsMultiplayer() )
-#endif
-			{
-				m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
-				m_pPlayer->m_flNextAmmoBurn = UTIL_WeaponTimeBase() + 0.1;
-			}
-			else
-			{
-				m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
-				m_pPlayer->m_flNextAmmoBurn = UTIL_WeaponTimeBase() + 0.3;
-			}
+			m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
+			m_pPlayer->m_flNextAmmoBurn = UTIL_WeaponTimeBase() + 0.1;
 		}
 
 		if ( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 )
@@ -337,19 +316,14 @@ void CGauss::StartFire( void )
 		//ALERT ( at_console, "Time:%f Damage:%f\n", gpGlobals->time - m_pPlayer->m_flStartCharge, flDamage );
 
 #ifndef CLIENT_DLL
-		float flZVel = m_pPlayer->pev->velocity.z;
+		//float flZVel = m_pPlayer->pev->velocity.z;
 
-		if ( !m_fPrimaryFire )
+		//if ( !m_fPrimaryFire )
 		{
-			m_pPlayer->pev->velocity = m_pPlayer->pev->velocity - gpGlobals->v_forward * flDamage * 5;
+			m_pPlayer->pev->velocity = m_pPlayer->pev->velocity - gpGlobals->v_forward * flDamage * 12.5;
 		}
 
-		if ( !g_pGameRules->IsMultiplayer() )
-
-		{
-			// in deathmatch, gauss can pop you up into the air. Not in single play.
-			m_pPlayer->pev->velocity.z = flZVel;
-		}
+		//m_pPlayer->pev->velocity.z = flZVel;
 #endif
 		// player "shoot" animation
 		m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
@@ -490,16 +464,7 @@ void CGauss::Fire( Vector vecOrigSrc, Vector vecDir, float flDamage )
 							// exit blast damage
 							//m_pPlayer->RadiusDamage( beam_tr.vecEndPos + vecDir * 8, pev, m_pPlayer->pev, flDamage, CLASS_NONE, DMG_BLAST );
 							float damage_radius;
-							
-
-							if ( g_pGameRules->IsMultiplayer() )
-							{
-								damage_radius = flDamage * 1.75;  // Old code == 2.5
-							}
-							else
-							{
-								damage_radius = flDamage * 2.5;
-							}
+							damage_radius = flDamage * 2.5;
 
 							::RadiusDamage( beam_tr.vecEndPos + vecDir * 8, pev, m_pPlayer->pev, flDamage, damage_radius, CLASS_NONE, DMG_BLAST );
 

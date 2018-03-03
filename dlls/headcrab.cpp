@@ -436,8 +436,8 @@ BOOL CHeadCrab :: CheckRangeAttack2 ( float flDot, float flDist )
 int CHeadCrab :: TakeDamage( entvars_t *pevInflictor, entvars_t *pevAttacker, float flDamage, int bitsDamageType )
 {
 	// Don't take any acid damage -- BigMomma's mortar is acid
-	if ( bitsDamageType & DMG_ACID )
-		flDamage = 0;
+	//if ( bitsDamageType & DMG_ACID )
+	//	flDamage = 0;
 
 	return CBaseMonster::TakeDamage( pevInflictor, pevAttacker, flDamage, bitsDamageType );
 }

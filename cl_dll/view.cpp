@@ -161,7 +161,7 @@ void V_InterpolateAngles( float *start, float *end, float *output, float frac )
 } */
 
 // Quakeworld bob code, this fixes jitters in the mutliplayer since the clock (pparams->time) isn't quite linear
-float V_CalcBob ( struct ref_params_s *pparams )
+float V_CalcBob ( struct ref_params_s *pparams, float* outTime = nullptr, float* outMag = nullptr )
 {
 	static	double	bobtime;
 	static float	bob;
@@ -192,13 +192,25 @@ float V_CalcBob ( struct ref_params_s *pparams )
 		cycle = M_PI + M_PI * ( cycle - cl_bobup->value )/( 1.0 - cl_bobup->value );
 	}
 
+	if ( outTime != nullptr )
+	{
+		*outTime = bobtime;
+	}
+
 	// bob is proportional to simulated velocity in the xy plane
 	// (don't count Z, or jumping messes it up)
 	VectorCopy( pparams->simvel, vel );
 	vel[2] = 0;
 
 	bob = sqrt( vel[0] * vel[0] + vel[1] * vel[1] ) * cl_bob->value;
-	bob = bob * 0.3 + bob * 0.7 * sin(cycle);
+	bob = bob * 0.3 + bob * 0.7;
+
+	if ( outMag != nullptr )
+	{
+		*outMag = bob;
+	}
+
+	bob = bob * sin(cycle);
 	bob = min( bob, 4 );
 	bob = max( bob, -7 );
 	return bob;
@@ -364,16 +376,51 @@ void V_CalcGunAngle ( struct ref_params_s *pparams )
 	cl_entity_t *viewent;
 	
 	viewent = gEngfuncs.GetViewModel();
-	if ( !viewent )
+	if ( viewent == nullptr )
+	{
 		return;
+	}
 
-	viewent->angles[YAW]   =  pparams->viewangles[YAW]   + pparams->crosshairangle[YAW];
-	viewent->angles[PITCH] = -pparams->viewangles[PITCH] + pparams->crosshairangle[PITCH] * 0.25;
-	viewent->angles[ROLL]  -= v_idlescale * sin(pparams->time*v_iroll_cycle.value) * v_iroll_level.value;
+	const float leadMult	= 0.125f;
+	const float leadDecay	= 18.0f;
+
+	const Vector desired =
+	{
+		-pparams->viewangles[PITCH],
+		 pparams->viewangles[YAW],
+		 0.0f
+	};
+	static Vector prevDesired = desired;
+	static Vector offset = {0, 0, 0};
+
+	Vector delta = desired - prevDesired;
 	
-	// don't apply all of the v_ipitch to prevent normally unseen parts of viewmodel from coming into view.
-	viewent->angles[PITCH] -= v_idlescale * sin(pparams->time*v_ipitch_cycle.value) * (v_ipitch_level.value * 0.5);
-	viewent->angles[YAW]   -= v_idlescale * sin(pparams->time*v_iyaw_cycle.value) * v_iyaw_level.value;
+	//plsfix: awful hacky wraparound clamp
+	if ( delta[YAW] >= 180.0f )
+	{
+		delta[YAW] -= 360.0f;
+	}
+	else
+	if ( delta[YAW] <= -180.0f )
+	{
+		delta[YAW] += 360.0f;
+	}
+
+	delta[ROLL] = delta[YAW] * -0.5f;
+	delta[YAW] = delta[YAW] * 1.0f;
+	
+	offset = offset + delta * leadMult;
+	offset = offset - offset * leadDecay * pparams->frametime;
+
+	prevDesired = desired;
+
+	viewent->angles =
+		desired +
+		Vector (
+			pparams->crosshairangle[PITCH] * 0.25f,
+			pparams->crosshairangle[YAW],
+			0.0f ) +
+		offset;
 
 	VectorCopy( viewent->angles, viewent->curstate.angles );
 	VectorCopy( viewent->angles, viewent->latched.prevangles );
@@ -393,6 +440,9 @@ void V_AddIdle ( struct ref_params_s *pparams )
 	pparams->viewangles[YAW] += v_idlescale * sin(pparams->time*v_iyaw_cycle.value) * v_iyaw_level.value;
 }
 
+
+extern cvar_t *cl_viewrollangle;
+extern cvar_t *cl_viewrollspeed;
  
 /*
 ==============
@@ -410,6 +460,7 @@ void V_CalcViewRoll ( struct ref_params_s *pparams )
 	if ( !viewentity )
 		return;
 
+	pparams->viewangles[ROLL] = V_CalcRoll (pparams->viewangles, pparams->simvel, cl_viewrollangle->value, cl_viewrollspeed->value ) * 4;
 	side = V_CalcRoll ( viewentity->angles, pparams->simvel, pparams->movevars->rollangle, pparams->movevars->rollspeed );
 
 	pparams->viewangles[ROLL] += side;
@@ -518,7 +569,8 @@ void V_CalcNormalRefdef ( struct ref_params_s *pparams )
 
 	// transform the view offset by the model's matrix to get the offset from
 	// model origin for the view
-	bob = V_CalcBob ( pparams );
+	float bobTime, bobMag;
+	bob = V_CalcBob ( pparams, &bobTime, &bobMag );
 
 	// refresh position
 	VectorCopy ( pparams->simorg, pparams->vieworg );
@@ -646,21 +698,61 @@ void V_CalcNormalRefdef ( struct ref_params_s *pparams )
 	// Use predicted origin as view origin.
 	VectorCopy ( pparams->simorg, view->origin );      
 	view->origin[2] += ( waterOffset );
+	view->origin[2] += bob; // cancel out viewbob.
 	VectorAdd( view->origin, pparams->viewheight, view->origin );
 
 	// Let the viewmodel shake at about 10% of the amplitude
 	gEngfuncs.V_ApplyShake( view->origin, view->angles, 0.9 );
 
+	// gun model bob
+	static float gunbobMag = 0.0f;
+	const float arcSpeed = 8.0f;
+	const float bobRampUp = 25.0f;
+	const float bobRampDn = 10.0f;
+
+	if ( !pparams->onground )
+	{
+		bobMag = 0.0f;
+	}
+
+	if ( bobMag > gunbobMag )
+	{
+		gunbobMag += pparams->frametime * bobRampUp;
+		if ( bobMag < gunbobMag )
+		{
+			gunbobMag = bobMag;
+		}
+	}
+	else
+	if ( bobMag < gunbobMag )
+	{
+		gunbobMag -= pparams->frametime * bobRampDn;
+		if ( bobMag > gunbobMag )
+		{
+			gunbobMag = bobMag;
+		}
+	}
+
+	float arc = sinf(bobTime * arcSpeed) * gunbobMag;
 	for ( i = 0; i < 3; i++ )
 	{
-		view->origin[ i ] += bob * 0.4 * pparams->forward[ i ];
+		view->origin[i] += pparams->right[i] * arc * 0.32f;
 	}
-	view->origin[2] += bob;
+	view->origin[2] -= fabsf(cosf(bobTime * arcSpeed) * gunbobMag * 0.32f);
 
-	// throw in a little tilt.
-	view->angles[YAW]   -= bob * 0.5;
-	view->angles[ROLL]  -= bob * 1;
-	view->angles[PITCH] -= bob * 0.3;
+	// gun model lead
+	static Vector lead = Vector(0, 0, 0);
+	const float leadSpeed = 14.0f;
+
+	//view->angles[ROLL] += 20.0f;
+	Vector desiredLead = Vector (
+		pparams->simvel[0] * 0.003f,
+		pparams->simvel[1] * 0.003f,
+		pparams->simvel[2] * -0.009f );
+
+	Vector leadVel = desiredLead - lead;
+	lead = lead + leadVel * pparams->frametime * leadSpeed;
+	view->origin = view->origin + lead;
 
 	// pushing the view origin down off of the same X/Z plane as the ent's origin will give the
 	// gun a very nice 'shifting' effect when the player looks up/down. If there is a problem

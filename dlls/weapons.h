@@ -109,10 +109,10 @@ public:
 // weapon clip/carry ammo capacities
 #define URANIUM_MAX_CARRY		100
 #define	_9MM_MAX_CARRY			250
-#define _357_MAX_CARRY			36
+#define _357_MAX_CARRY			420
 #define BUCKSHOT_MAX_CARRY		125
 #define BOLT_MAX_CARRY			50
-#define ROCKET_MAX_CARRY		5
+#define ROCKET_MAX_CARRY		123
 #define HANDGRENADE_MAX_CARRY	10
 #define SATCHEL_MAX_CARRY		5
 #define TRIPMINE_MAX_CARRY		5
@@ -125,12 +125,12 @@ public:
 
 //#define CROWBAR_MAX_CLIP		WEAPON_NOCLIP
 #define GLOCK_MAX_CLIP			500
-#define PYTHON_MAX_CLIP			6
+#define PYTHON_MAX_CLIP			240
 #define MP5_MAX_CLIP			50
 #define MP5_DEFAULT_AMMO		25
 #define SHOTGUN_MAX_CLIP		8
 #define CROSSBOW_MAX_CLIP		5
-#define RPG_MAX_CLIP			1
+#define RPG_MAX_CLIP			6
 #define GAUSS_MAX_CLIP			WEAPON_NOCLIP
 #define EGON_MAX_CLIP			WEAPON_NOCLIP
 #define HORNETGUN_MAX_CLIP		WEAPON_NOCLIP
@@ -142,13 +142,13 @@ public:
 
 // the default amount of ammo that comes with each gun when it spawns
 #define GLOCK_DEFAULT_GIVE			500
-#define PYTHON_DEFAULT_GIVE			6
+#define PYTHON_DEFAULT_GIVE			1
 #define MP5_DEFAULT_GIVE			25
 #define MP5_DEFAULT_AMMO			25
 #define MP5_M203_DEFAULT_GIVE		0
 #define SHOTGUN_DEFAULT_GIVE		12
 #define CROSSBOW_DEFAULT_GIVE		5
-#define RPG_DEFAULT_GIVE			1
+#define RPG_DEFAULT_GIVE			10
 #define GAUSS_DEFAULT_GIVE			20
 #define EGON_DEFAULT_GIVE			20
 #define HANDGRENADE_DEFAULT_GIVE	5
@@ -665,29 +665,9 @@ private:
 	unsigned short m_usSingleFire;
 };
 
-class CLaserSpot : public CBaseEntity
-{
-	void Spawn( void );
-	void Precache( void );
-
-	int	ObjectCaps( void ) { return FCAP_DONT_SAVE; }
-
-public:
-	void Suspend( float flSuspendTime );
-	void EXPORT Revive( void );
-	
-	static CLaserSpot *CreateSpot( void );
-};
-
 class CRpg : public CBasePlayerWeapon
 {
 public:
-
-#ifndef CLIENT_DLL
-	int		Save( CSave &save );
-	int		Restore( CRestore &restore );
-	static	TYPEDESCRIPTION m_SaveData[];
-#endif
 
 	void Spawn( void );
 	void Precache( void );
@@ -704,12 +684,7 @@ public:
 	void SecondaryAttack( void );
 	void WeaponIdle( void );
 
-	void UpdateSpot( void );
 	BOOL ShouldWeaponIdle( void ) { return TRUE; };
-
-	CLaserSpot *m_pSpot;
-	int m_fSpotActive;
-	int m_cActiveRockets;// how many missiles in flight from this launcher right now?
 
 	virtual BOOL UseDecrement( void )
 	{ 
@@ -736,11 +711,10 @@ public:
 	void EXPORT FollowThink( void );
 	void EXPORT IgniteThink( void );
 	void EXPORT RocketTouch( CBaseEntity *pOther );
-	static CRpgRocket *CreateRpgRocket( Vector vecOrigin, Vector vecAngles, CBaseEntity *pOwner, CRpg *pLauncher );
+	static CRpgRocket *CreateRpgRocket( Vector vecOrigin, Vector vecDir, CBaseEntity *pOwner, float speed = -1 );
 
 	int m_iTrail;
 	float m_flIgniteTime;
-	CRpg *m_pLauncher;// pointer back to the launcher that fired me. 
 };
 
 class CGauss : public CBasePlayerWeapon

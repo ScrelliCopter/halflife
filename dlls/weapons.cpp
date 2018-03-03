@@ -1561,18 +1561,10 @@ void CBasePlayerWeapon::PrintState( void )
 	ALERT( at_console, "m_iclip:  %i\n", m_iClip );
 }
 
-
-TYPEDESCRIPTION	CRpg::m_SaveData[] = 
-{
-	DEFINE_FIELD( CRpg, m_fSpotActive, FIELD_INTEGER ),
-	DEFINE_FIELD( CRpg, m_cActiveRockets, FIELD_INTEGER ),
-};
-IMPLEMENT_SAVERESTORE( CRpg, CBasePlayerWeapon );
-
 TYPEDESCRIPTION	CRpgRocket::m_SaveData[] = 
 {
 	DEFINE_FIELD( CRpgRocket, m_flIgniteTime, FIELD_TIME ),
-	DEFINE_FIELD( CRpgRocket, m_pLauncher, FIELD_CLASSPTR ),
+	//DEFINE_FIELD( CRpgRocket, m_pLauncher, FIELD_CLASSPTR ),
 };
 IMPLEMENT_SAVERESTORE( CRpgRocket, CGrenade );
 

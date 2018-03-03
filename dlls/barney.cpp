@@ -484,7 +484,7 @@ void CBarney :: TalkInit()
 	m_szGrp[TLK_MORTAL] =	"BA_MORTAL";
 
 	// get voice for head - just one barney voice for now
-	m_voicePitch = 100;
+	m_voicePitch = RANDOM_FLOAT( 50, 150 );
 }
 
 

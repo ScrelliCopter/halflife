@@ -72,7 +72,7 @@ void CRat :: Spawn()
 	Precache( );
 
 	SET_MODEL(ENT(pev), "models/bigrat.mdl");
-	UTIL_SetSize( pev, Vector( 0, 0, 0 ), Vector( 0, 0, 0 ) );
+	UTIL_SetSize( pev, Vector( -3, -6, 0 ), Vector( 3, 6, 4 ) );
 
 	pev->solid			= SOLID_SLIDEBOX;
 	pev->movetype		= MOVETYPE_STEP;

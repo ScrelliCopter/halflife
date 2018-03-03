@@ -2431,7 +2431,7 @@ void PM_NoClip()
 }
 
 // Only allow bunny jumping up to 1.7x server / player maxspeed setting
-#define BUNNYJUMP_MAX_SPEED_FACTOR 1.7f
+//#define BUNNYJUMP_MAX_SPEED_FACTOR 1.7f
 
 //-----------------------------------------------------------------------------
 // Purpose: Corrects bunny jumping ( where player initiates a bunny jump before other
@@ -2439,6 +2439,7 @@ void PM_NoClip()
 //  running PM_AirMove, which doesn't crop velocity to maxspeed like the ground / other
 //  movement logic does.
 //-----------------------------------------------------------------------------
+/*
 void PM_PreventMegaBunnyJumping( void )
 {
 	// Current player speed
@@ -2463,6 +2464,7 @@ void PM_PreventMegaBunnyJumping( void )
 	
 	VectorScale( pmove->velocity, fraction, pmove->velocity ); //Crop it down!.
 }
+*/
 
 /*
 =============
@@ -2555,7 +2557,7 @@ void PM_Jump (void)
 	// In the air now.
     pmove->onground = -1;
 
-	PM_PreventMegaBunnyJumping();
+	//PM_PreventMegaBunnyJumping();
 
 	if ( tfc )
 	{
